@@ -12,9 +12,17 @@ window.innerWidth;
 canvas.height =
 window.innerHeight;
 
-const fireBtn =
+
+
+
+
+/* ====================
+   UI
+==================== */
+
+const attackBtn =
 document.getElementById(
-"fireBtn"
+"attackBtn"
 );
 
 const joystick =
@@ -32,31 +40,42 @@ document.getElementById(
 "health"
 );
 
-const ammoUI =
+const killsUI =
 document.getElementById(
-"ammo"
+"kills"
 );
 
-const scoreUI =
-document.getElementById(
-"score"
-);
-
-let score = 0;
 
 
 
 
-
-/* =====================
+/* ====================
    IMAGES
-===================== */
+==================== */
 
-const playerImage =
+const idleImage =
 new Image();
 
-playerImage.src =
-"assets/player.png";
+idleImage.src =
+"assets/Idle.png";
+
+const runImage =
+new Image();
+
+runImage.src =
+"assets/Run.png";
+
+const attackImage =
+new Image();
+
+attackImage.src =
+"assets/Attack.png";
+
+const hurtImage =
+new Image();
+
+hurtImage.src =
+"assets/Hurt.png";
 
 const enemyImage =
 new Image();
@@ -68,25 +87,30 @@ enemyImage.src =
 
 
 
-/* =====================
+/* ====================
    PLAYER
-===================== */
+==================== */
 
 const player = {
 
-  x:canvas.width/2,
+  x:200,
 
-  y:canvas.height/2,
+  y:
+  canvas.height - 250,
 
-  size:80,
+  width:140,
+
+  height:140,
 
   speed:5,
 
-  angle:0,
-
   health:100,
 
-  ammo:30
+  attacking:false,
+
+  moving:false,
+
+  direction:1
 
 };
 
@@ -94,30 +118,56 @@ const player = {
 
 
 
-/* =====================
-   ARRAYS
-===================== */
+/* ====================
+   ENEMIES
+==================== */
 
-const bullets = [];
 const enemies = [];
-const particles = [];
+
+let kills = 0;
+
+function spawnEnemy(){
+
+  enemies.push({
+
+    x:
+    canvas.width + 100,
+
+    y:
+    canvas.height - 240,
+
+    width:120,
+
+    height:120,
+
+    speed:
+    2 + Math.random()*2,
+
+    health:100
+
+  });
+
+}
+
+setInterval(
+spawnEnemy,
+2000
+);
 
 
 
 
 
-/* =====================
+/* ====================
    JOYSTICK
-===================== */
+==================== */
 
 let moveX = 0;
-let moveY = 0;
 
 let joystickActive =
 false;
 
 let startX = 0;
-let startY = 0;
 
 joystick.addEventListener(
 "touchstart",
@@ -128,9 +178,6 @@ e=>{
 
   startX =
   e.touches[0].clientX;
-
-  startY =
-  e.touches[0].clientY;
 
 }
 );
@@ -148,17 +195,10 @@ e=>{
 
   moveX =
   (touch.clientX - startX)
-  / 35;
-
-  moveY =
-  (touch.clientY - startY)
-  / 35;
+  / 30;
 
   stick.style.left =
-  50 + moveX * 8 + "%";
-
-  stick.style.top =
-  50 + moveY * 8 + "%";
+  50 + moveX * 10 + "%";
 
 }
 );
@@ -172,14 +212,10 @@ window.addEventListener(
   false;
 
   moveX = 0;
-  moveY = 0;
 
   stick.style.left =
   "50%";
 
-  stick.style.top =
-  "50%";
-
 }
 );
 
@@ -187,73 +223,35 @@ window.addEventListener(
 
 
 
-/* =====================
-   AIM
-===================== */
-
-window.addEventListener(
-"touchmove",
-
-e=>{
-
-  const touch =
-  e.touches[0];
-
-  const dx =
-  touch.clientX
-  - player.x;
-
-  const dy =
-  touch.clientY
-  - player.y;
-
-  player.angle =
-  Math.atan2(dy,dx);
-
-}
-);
-
-
-
-
-
-/* =====================
-   MOVE PLAYER
-===================== */
+/* ====================
+   PLAYER MOVEMENT
+==================== */
 
 function movePlayer(){
 
   player.x += moveX;
 
-  player.y += moveY;
+  player.moving =
+  moveX !== 0;
+
+  if(moveX > 0)
+  player.direction = 1;
+
+  if(moveX < 0)
+  player.direction = -1;
 
   if(player.x < 0)
   player.x = 0;
 
-  if(player.y < 0)
-  player.y = 0;
-
   if(
   player.x >
   canvas.width
-  - player.size
+  - player.width
   ){
 
     player.x =
     canvas.width
-    - player.size;
-
-  }
-
-  if(
-  player.y >
-  canvas.height
-  - player.size
-  ){
-
-    player.y =
-    canvas.height
-    - player.size;
+    - player.width;
 
   }
 
@@ -263,44 +261,42 @@ function movePlayer(){
 
 
 
-/* =====================
+/* ====================
    DRAW PLAYER
-===================== */
+==================== */
 
 function drawPlayer(){
 
   ctx.save();
 
-  ctx.translate(
-
-    player.x +
-    player.size/2,
-
-    player.y +
-    player.size/2
-
+  ctx.scale(
+    player.direction,
+    1
   );
 
-  ctx.rotate(
-  player.angle
-  );
+  let image =
+  idleImage;
 
-  ctx.shadowColor =
-  "cyan";
+  if(player.moving)
+  image = runImage;
 
-  ctx.shadowBlur = 30;
+  if(player.attacking)
+  image = attackImage;
 
   ctx.drawImage(
 
-    playerImage,
+    image,
 
-    -player.size/2,
+    player.direction === 1
+    ? player.x
+    : -player.x
+    - player.width,
 
-    -player.size/2,
+    player.y,
 
-    player.size,
+    player.width,
 
-    player.size
+    player.height
 
   );
 
@@ -312,406 +308,118 @@ function drawPlayer(){
 
 
 
-/* =====================
-   SHOOT
-===================== */
+/* ====================
+   ATTACK
+==================== */
 
-function shoot(){
-
-  if(player.ammo <= 0)
-  return;
-
-  player.ammo--;
-
-  const speed = 15;
-
-  bullets.push({
-
-    x:
-    player.x +
-    player.size/2,
-
-    y:
-    player.y +
-    player.size/2,
-
-    dx:
-    Math.cos(
-    player.angle
-    ) * speed,
-
-    dy:
-    Math.sin(
-    player.angle
-    ) * speed,
-
-    size:8
-
-  });
-
-  createMuzzleFlash();
-
-}
-
-
-
-
-
-/* =====================
-   FIRE BUTTON
-===================== */
-
-fireBtn.addEventListener(
+attackBtn.addEventListener(
 "touchstart",
 
-shoot
-);
+()=>{
+
+  player.attacking =
+  true;
+
+  setTimeout(()=>{
+
+    player.attacking =
+    false;
+
+  },300);
 
 
 
 
 
-/* =====================
-   PARTICLES
-===================== */
+  enemies.forEach(
+  (enemy,index)=>{
 
-function createMuzzleFlash(){
-
-  for(let i=0;i<15;i++){
-
-    particles.push({
-
-      x:
-      player.x +
-      player.size/2,
-
-      y:
-      player.y +
-      player.size/2,
-
-      dx:
-      (Math.random()-.5)
-      * 8,
-
-      dy:
-      (Math.random()-.5)
-      * 8,
-
-      size:
-      Math.random()*6,
-
-      life:20,
-
-      color:"orange"
-
-    });
-
-  }
-
-}
-
-
-
-
-
-function explosion(x,y){
-
-  for(let i=0;i<40;i++){
-
-    particles.push({
-
-      x,
-      y,
-
-      dx:
-      (Math.random()-.5)
-      * 12,
-
-      dy:
-      (Math.random()-.5)
-      * 12,
-
-      size:
-      Math.random()*10,
-
-      life:50,
-
-      color:
-      Math.random() > .5
-      ? "orange"
-      : "red"
-
-    });
-
-  }
-
-}
-
-
-
-
-
-function drawParticles(){
-
-  particles.forEach(
-  (p,index)=>{
-
-    p.x += p.dx;
-
-    p.y += p.dy;
-
-    p.life--;
-
-    ctx.fillStyle =
-    p.color;
-
-    ctx.fillRect(
-
-      p.x,
-      p.y,
-
-      p.size,
-      p.size
-
+    const distance =
+    Math.abs(
+    player.x - enemy.x
     );
 
-    if(p.life <= 0){
+    if(distance < 150){
 
-      particles.splice(
-      index,1
-      );
+      enemy.health -= 50;
+
+      if(enemy.health <= 0){
+
+        enemies.splice(
+        index,
+        1
+        );
+
+        kills++;
+
+      }
 
     }
 
   });
 
 }
-
-
-
-
-
-/* =====================
-   BULLETS
-===================== */
-
-function drawBullets(){
-
-  bullets.forEach(
-  (bullet,index)=>{
-
-    bullet.x += bullet.dx;
-
-    bullet.y += bullet.dy;
-
-    ctx.save();
-
-    ctx.fillStyle =
-    "yellow";
-
-    ctx.shadowColor =
-    "orange";
-
-    ctx.shadowBlur = 20;
-
-    ctx.beginPath();
-
-    ctx.arc(
-
-      bullet.x,
-
-      bullet.y,
-
-      bullet.size,
-
-      0,
-
-      Math.PI*2
-
-    );
-
-    ctx.fill();
-
-    ctx.restore();
-
-    if(
-
-      bullet.x < 0 ||
-
-      bullet.x >
-      canvas.width ||
-
-      bullet.y < 0 ||
-
-      bullet.y >
-      canvas.height
-
-    ){
-
-      bullets.splice(
-      index,1
-      );
-
-    }
-
-  });
-
-}
-
-
-
-
-
-/* =====================
-   ENEMIES
-===================== */
-
-function spawnEnemy(){
-
-  enemies.push({
-
-    x:
-    canvas.width + 100,
-
-    y:
-    Math.random() *
-    canvas.height,
-
-    size:80,
-
-    speed:
-    2 + Math.random()*2,
-
-    health:100
-
-  });
-
-}
-
-setInterval(
-spawnEnemy,
-1500
 );
 
 
 
 
+
+/* ====================
+   DRAW ENEMIES
+==================== */
 
 function drawEnemies(){
 
   enemies.forEach(
-  (enemy,eIndex)=>{
+  enemy=>{
 
-    const dx =
-    player.x - enemy.x;
+    enemy.x -=
+    enemy.speed;
 
-    const dy =
-    player.y - enemy.y;
 
-    const angle =
-    Math.atan2(dy,dx);
 
-    enemy.x +=
-    Math.cos(angle)
-    * enemy.speed;
 
-    enemy.y +=
-    Math.sin(angle)
-    * enemy.speed;
-
-    ctx.save();
-
-    ctx.translate(
-
-      enemy.x +
-      enemy.size/2,
-
-      enemy.y +
-      enemy.size/2
-
-    );
-
-    ctx.rotate(angle);
-
-    ctx.shadowColor =
-    "red";
-
-    ctx.shadowBlur = 25;
 
     ctx.drawImage(
 
       enemyImage,
 
-      -enemy.size/2,
+      enemy.x,
 
-      -enemy.size/2,
+      enemy.y,
 
-      enemy.size,
+      enemy.width,
 
-      enemy.size
+      enemy.height
 
     );
 
-    ctx.restore();
 
 
 
 
+    if(
 
-    bullets.forEach(
-    (bullet,bIndex)=>{
+    Math.abs(
+    player.x - enemy.x
+    ) < 80
 
-      const bdx =
-      bullet.x - enemy.x;
+    ){
 
-      const bdy =
-      bullet.y - enemy.y;
+      player.health -= .1;
 
-      const distance =
-      Math.sqrt(
+      if(player.health <= 0){
 
-      bdx*bdx +
-
-      bdy*bdy
-
-      );
-
-      if(
-      distance <
-      enemy.size
-      ){
-
-        bullets.splice(
-        bIndex,
-        1
+        alert(
+        "GAME OVER"
         );
 
-        enemy.health -= 50;
-
-        explosion(
-          bullet.x,
-          bullet.y
-        );
-
-        if(enemy.health <= 0){
-
-          enemies.splice(
-          eIndex,
-          1
-          );
-
-          explosion(
-            enemy.x,
-            enemy.y
-          );
-
-          score += 10;
-
-        }
+        location.reload();
 
       }
 
-    });
+    }
 
   });
 
@@ -721,9 +429,9 @@ function drawEnemies(){
 
 
 
-/* =====================
+/* ====================
    UI
-===================== */
+==================== */
 
 function updateUI(){
 
@@ -732,11 +440,8 @@ function updateUI(){
   player.health
   );
 
-  ammoUI.innerText =
-  player.ammo;
-
-  scoreUI.innerText =
-  score;
+  killsUI.innerText =
+  kills;
 
 }
 
@@ -744,9 +449,9 @@ function updateUI(){
 
 
 
-/* =====================
+/* ====================
    LIGHTING
-===================== */
+==================== */
 
 function drawLighting(){
 
@@ -769,19 +474,13 @@ function drawLighting(){
   );
 
   gradient.addColorStop(
-
     0,
-
     "rgba(255,255,255,.08)"
-
   );
 
   gradient.addColorStop(
-
     1,
-
-    "rgba(0,0,0,.85)"
-
+    "rgba(0,0,0,.8)"
   );
 
   ctx.fillStyle =
@@ -805,9 +504,9 @@ function drawLighting(){
 
 
 
-/* =====================
+/* ====================
    GAME LOOP
-===================== */
+==================== */
 
 function gameLoop(){
 
@@ -827,11 +526,7 @@ function gameLoop(){
 
   drawPlayer();
 
-  drawBullets();
-
   drawEnemies();
-
-  drawParticles();
 
   drawLighting();
 
@@ -843,13 +538,15 @@ function gameLoop(){
 
 }
 
+gameLoop();
 
 
 
 
-/* =====================
+
+/* ====================
    LANDSCAPE
-===================== */
+==================== */
 
 async function
 forceLandscape(){
@@ -898,5 +595,3 @@ document.body.addEventListener(
 "click",
 forceLandscape
 );
-
-gameLoop();
